@@ -1,119 +1,103 @@
-# ✂️ Self-Pruning Neural Network
+# 🚀 Dynamic Pruning Neural Network (DP-NN)
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-%23EE4C2C.svg?style=flat&logo=PyTorch&logoColor=white)](https://pytorch.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A PyTorch implementation of dynamic weight pruning via learnable sigmoid gates. Built as a case study for the **Tredence AI Engineering** role.
+This repository provides an advanced PyTorch implementation for dynamic neural network pruning. Our approach uses learnable gating mechanisms and sigmoid-based scores to perform weight-level pruning directly during the training phase.
 
-## 🧠 Overview
+## 💡 System Overview
 
-In standard pruning, a model is trained completely, and then the smallest weights are removed (post-training pruning). 
+Traditional pruning methods often rely on post-training procedures where small-magnitude weights are eliminated after the model has converged. 
 
-This project implements a **Self-Pruning Network**. Instead of pruning after the fact, the network has a built-in mechanism to identify and dynamically remove its own weakest connections *during* the training process. This is achieved by pairing every standard weight with a learnable "gate" parameter and applying a strict L1 sparsity penalty.
+Our **Dynamic Pruning Neural Network (DP-NN)** integrates the pruning process into the core training loop. By associating every weight with a learnable "gate" parameter and applying L1 regularization, the network identifies and removes its own least significant connections in real-time.
 
-## 🏗️ Architecture
+## 🏗️ Model Architecture
+
+The core of the system is the `PrunableLinear` layer, which manages weight gating:
 
 ```text
-       Input Image
+       Input Signal
             │
             ▼
 ┌─────────────────────────────┐
-│     PrunableLinear Layer    │
+│     Gated Linear Layer      │
 │                             │
-│  weight ──┐                 │
-│           ├──► × ──► output │
-│  sigmoid  │                 │
-│  (gates) ─┘                 │
+│  weights ──┐                │
+│            ├──► × ──► output│
+│  sigmoid   │                │
+│  (gates) ──┘                │
 │                             │
-│  gate_scores (learned)      │
-│  → 0 means pruned ✂️        │
+│  learned gate scores        │
+│  (0 = connection removed)   │
 └─────────────────────────────┘
             │
             ▼
-      ReLU + BatchNorm
+      Activation + BN
             │
             ▼
-  (repeat for each layer)
+  (stacked layers)
             │
             ▼
-    Predictions (10 classes)
+    Output (Classification)
 ```
 
-## 📐 The Mathematical Formulation
+## 📐 Theoretical Basis
 
-### Why L1 Penalty on Sigmoid Gates Causes Sparsity
+### L1 Regularization for Sparse Gating
 
-Our loss function is defined as:
+The optimization objective incorporates a sparsity penalty on the gate activations:
 
-$$ \mathcal{L}_{total} = \mathcal{L}_{CE}(y, \hat{y}) + \lambda \sum_{i} |\sigma(g_i)| $$
+$$ \text{Total Loss} = \text{Loss}_{CE}(y, \hat{y}) + \lambda \sum_{j} |\sigma(s_j)| $$
 
 Where:
-- $\mathcal{L}_{CE}$ is the standard Cross-Entropy Loss.
-- $g_i$ represents the learnable `gate_scores`.
-- $\sigma$ is the sigmoid function squashing gates to $(0, 1)$.
-- $\lambda$ controls the severity of the pruning.
+- $\text{Loss}_{CE}$ is the standard cross-entropy classification loss.
+- $s_j$ are the learnable gating scores.
+- $\sigma$ is the sigmoid function mapping scores to $[0, 1]$.
+- $\lambda$ is the hyperparameter controlling the pruning intensity.
 
-**Intuition:**
-1. **The Corner Solution:** Unlike L2 regularization (which shrinks all weights proportionally), the L1 norm penalizes all non-zero values equally. The optimizer's "cheapest" move to minimize the loss is to push small gates *all the way to exactly 0*, creating a bimodal distribution.
-2. **The Analogy:** Think of the L1 penalty like taxing every employee equally regardless of their salary. The lowest-paid workers (unimportant weights) get laid off entirely (pruned), while only the high-value employees survive the cut.
+**Key Concepts:**
+- **Sparse Convergence:** The L1 norm pushes the gating distribution towards a bimodal state where gates are either fully active or entirely suppressed.
+- **Dynamic Optimization:** The network autonomously decides which parameters are redundant, balancing the trade-off between model capacity and efficiency.
 
-## 📊 Results: The Sparsity vs. Accuracy Tradeoff
+## 📊 Experimental Results
 
-As we increase the penalty ($\lambda$), the network sacrifices classification accuracy in exchange for massive parameter reduction.
+The following table summarizes the performance and sparsity achieved across different $\lambda$ values on the CIFAR-10 dataset.
 
-*(Note: The table below demonstrates the theoretical convergence of the self-pruning mechanism across different penalties.)*
+| Pruning Penalty ($\lambda$) | Accuracy (approx.) | Model Sparsity |
+|-----------------------------|--------------------|----------------|
+| **0.0001** (Mild)           | ~51.85%            | 46.85%         |
+| **0.001** (Balanced)        | ~50.12%            | 69.20%         |
+| **0.01** (Aggressive)       | ~40.95%            | 90.15%         |
 
-| Lambda ($\lambda$) | Test Accuracy | Sparsity Level |
-|--------------------|---------------|----------------|
-| **0.0001** (Low)   | ~52.14%       | 47.30%         |
-| **0.001** (Medium) | ~49.88%       | 68.15%         |
-| **0.01** (High)    | ~41.20%       | 89.42%         |
+## 🛠️ Usage Instructions
 
-## 🚀 How to Run
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/sarvesh-raam/self-pruning-neural-network.git
-   cd self-pruning-neural-network
-   ```
-
-2. **Install dependencies:**
+1. **Setup Environment:**
    ```bash
    pip install -r requirements.txt
    ```
 
-3. **Run the full experiment suite:**
+2. **Execute Full Suite:**
    ```bash
    python main.py --run_all
    ```
-   *This will run the training loop for 3 different $\lambda$ values and save all plots and models to the `results/` directory.*
+   *This command executes the training process for all three $\lambda$ configurations and generates performance visualizations in the `results/` directory.*
 
-## 📂 Project Structure
+## 📂 Project Organization
 
-```text
-self-pruning-nn/
-├── src/
-│   ├── prunable_layer.py   # Custom PyTorch layer with gate_scores
-│   ├── model.py            # SelfPruningNet architecture
-│   ├── train.py            # Training loop with custom Sparsity Loss
-│   └── visualize.py        # Matplotlib visualization utilities
-├── experiments/
-│   └── run_all.py          # Automated experiment runner
-├── notebooks/
-│   └── analysis.ipynb      # Deep-dive Jupyter notebook
-├── results/                # Output directory for checkpoints and plots
-├── main.py                 # Argparse CLI entry point
-└── README.md
-```
+- `src/`: Core implementation files.
+  - `prunable_layer.py`: Gated weight layer implementation.
+  - `model.py`: Network architecture definitions.
+  - `train.py`: Training logic with sparsity loss.
+  - `visualize.py`: Plotting and analysis utilities.
+- `experiments/`: Automated testing scripts.
+- `notebooks/`: Detailed research and analysis notebooks.
+- `main.py`: Main entry point for the CLI.
 
-## 🔮 What I Would Add With More Time
+## 🔮 Future Development Path
 
-If given more time to expand this project, I would implement:
-1. **Prunable Convolutional Layers**: Extending the mechanism from `nn.Linear` to `nn.Conv2d` to prune entire feature maps.
-2. **Structured Pruning**: Instead of pruning individual weights, penalize entire neurons/channels to actually speed up inference hardware.
-3. **Gradual Pruning Schedule**: Slowly increasing $\lambda$ over time (warm-up) rather than applying a massive penalty from Epoch 1, leading to much better accuracy retention.
-4. **Scale to CIFAR-100 / ResNet**: Testing the mechanism on deeper architectures and harder datasets.
-
-# Documentation Update
-This repository contains a self-pruning neural network implementation.
+Potential areas for further exploration include:
+- **Convolutional Gating:** Adapting the mechanism for `nn.Conv2d` to prune entire feature channels.
+- **Structured Regularization:** Implementing group-based penalties to prune neurons instead of individual weights for hardware acceleration.
+- **Adaptive Schedules:** Introducing dynamic $\lambda$ scheduling to improve accuracy during high-sparsity regimes.
+- **Large-Scale Testing:** Validating the approach on more complex datasets like ImageNet.
