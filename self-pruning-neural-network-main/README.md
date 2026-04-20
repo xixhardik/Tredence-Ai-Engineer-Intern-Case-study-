@@ -114,3 +114,6 @@ If given more time to expand this project, I would implement:
 2. **Structured Pruning**: Instead of pruning individual weights, penalize entire neurons/channels to actually speed up inference hardware.
 3. **Gradual Pruning Schedule**: Slowly increasing $\lambda$ over time (warm-up) rather than applying a massive penalty from Epoch 1, leading to much better accuracy retention.
 4. **Scale to CIFAR-100 / ResNet**: Testing the mechanism on deeper architectures and harder datasets.
+
+# Documentation Update
+This repository contains a self-pruning neural network implementation.
