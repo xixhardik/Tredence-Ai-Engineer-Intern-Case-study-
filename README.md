@@ -6,7 +6,7 @@ This repository contains a PyTorch-based framework for end-to-end weight pruning
 
 ## 📝 Concept Summary
 
-Traditional pruning techniques typically involve a multi-stage process where a model is fully trained before identifying and removing low-magnitude weights.
+Traditional pruning techniques typically involved a multi-stage process where a model is fully trained before identifying and removing low-magnitude weights.
 
 In contrast, this project introduces a **Self-Pruning Architecture**. Rather than relying on post-hoc analysis, the network is designed to autonomously optimize its own connectivity *while training*. This is achieved by introducing trainable "gate" coefficients for every weight, regulated by a sparse L1 penalty that encourages the network to deactivate redundant connections.
 
